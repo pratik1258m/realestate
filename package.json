@@ -1,0 +1,19 @@
+{
+  "name": "real-estate-news-intelligence",
+  "version": "1.0.0",
+  "description": "Real Estate News Intelligence & Distribution Platform",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx netlify dev"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^10.7.9",
+    "@netlify/functions": "^5.3.0",
+    "@supabase/supabase-js": "^2.43.4",
+    "dotenv": "^16.4.5",
+    "rss-parser": "^3.13.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^26.1.0"
+  }
+}

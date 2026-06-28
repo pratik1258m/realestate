@@ -1,0 +1,21 @@
+# Local Netlify folder
+.netlify
+
+# Dependencies
+node_modules/
+
+# Local Environment Variables
+.env
+.env.local
+.env.*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Deploy artifacts (binary ZIP, DB files)
+deploy/
+*.zip

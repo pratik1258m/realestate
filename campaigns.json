@@ -1,0 +1,40 @@
+{
+  "campaigns": [
+    {
+      "id": "camp_1782634129668",
+      "subject": "Daily Real Estate Bulletin — 28 Jun",
+      "date": "28 Jun 2026",
+      "sentAt": "2026-06-28T08:08:49.668Z",
+      "groups": [],
+      "formats": [
+        "pdf",
+        "email",
+        "whatsapp"
+      ],
+      "articlesCount": 1,
+      "recipientsCount": 5000,
+      "mode": "Sandbox Simulation",
+      "status": "Completed",
+      "stats": {
+        "sent": 5000,
+        "delivered": 4901,
+        "opened": 2898,
+        "clicked": 892
+      },
+      "openTracking": [],
+      "clickTracking": []
+    },
+    {
+      "id": "camp_test",
+      "subject": "Tracking test",
+      "stats": {
+        "sent": 10,
+        "delivered": 10,
+        "opened": 0,
+        "clicked": 0
+      },
+      "openTracking": [],
+      "clickTracking": []
+    }
+  ]
+}

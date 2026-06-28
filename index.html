@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description"
+    content="Real Estate News Intelligence & Distribution Platform — Automated daily property updates across India">
+  <title>Real Estate Updates — Intelligence Desk</title>
+
+  <!-- Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,72,400;0,72,500;0,72,600;0,72,700;1,72,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet">
+
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+
+  <!-- jsPDF & jsPDF AutoTable CDNs for Frontend Report Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+</head>
+
+<body>
+
+  <!-- ============ TOAST NOTIFICATION CONTAINER ============ -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <!-- ============ TOP BAR ============ -->
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="stamp"><span>RE<br>DESK</span></div>
+        <div class="brand-text">
+          <b>Real Estate Updates</b>
+          <small>India · Intelligence Desk</small>
+        </div>
+      </div>
+      <div class="search-wrap">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="7" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input id="searchInput" placeholder="Search builder, project, city, RERA number…">
+      </div>
+      <div class="topnav" id="topnav">
+        <button class="nav-btn active" data-view="feed">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          </svg>
+          Feed
+        </button>
+        <button class="nav-btn" data-view="saved">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+          </svg>
+          Saved
+        </button>
+        <button class="nav-btn" data-view="admin">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M6 20v-2a6 6 0 0 1 12 0v2" />
+          </svg>
+          Admin Panel
+        </button>
+      </div>
+      <button class="hamburger" id="hamburgerBtn" aria-label="Open menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M3 6h18M3 12h18M3 18h18" />
+        </svg>
+      </button>
+    </div>
+    <!-- Mobile Nav Drawer -->
+    <div class="mobile-nav" id="mobileNav">
+      <button class="nav-btn" data-view="feed" data-mobile="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+        </svg>
+        Feed
+      </button>
+      <button class="nav-btn" data-view="saved" data-mobile="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z" />
+        </svg>
+        Saved
+      </button>
+      <button class="nav-btn" data-view="admin" data-mobile="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M6 20v-2a6 6 0 0 1 12 0v2" />
+        </svg>
+        Admin Panel
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ FEED VIEW ============ -->
+  <div id="view-feed" class="shell" data-shell>
+    <aside class="filters" id="filtersPanel">
+      <div class="filter-card">
+        <h3>Filter Updates</h3>
+        <div class="filter-group">
+          <label>Location</label>
+          <div class="chip-row" id="filter-city">
+            <button class="chip on" data-city="All">All India</button>
+            <button class="chip" data-city="Mumbai">Mumbai</button>
+            <button class="chip" data-city="Thane">Thane</button>
+            <button class="chip" data-city="Pune">Pune</button>
+            <button class="chip" data-city="Bengaluru">Bengaluru</button>
+            <button class="chip" data-city="Gurugram">Gurugram</button>
+            <button class="chip" data-city="Noida">Noida</button>
+            <button class="chip" data-city="Hyderabad">Hyderabad</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>Category</label>
+          <div class="chip-row" id="filter-category">
+            <button class="chip on" data-cat="All">Any</button>
+            <button class="chip" data-cat="Project Launch">Launch</button>
+            <button class="chip" data-cat="Land Acquisition">Acquisition</button>
+            <button class="chip" data-cat="Redevelopment">Redevelopment</button>
+            <button class="chip" data-cat="RERA">RERA</button>
+            <button class="chip" data-cat="Funding">Funding</button>
+            <button class="chip" data-cat="Government Policy">Policy</button>
+            <button class="chip" data-cat="Infrastructure">Infrastructure</button>
+            <button class="chip" data-cat="Litigation">Litigation</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>RERA Status</label>
+          <div class="chip-row" id="filter-rera">
+            <button class="chip on" data-rera="All">Any</button>
+            <button class="chip" data-rera="Registered">Registered Only</button>
+          </div>
+        </div>
+        <div class="filter-group">
+          <label>Priority Score</label>
+          <div class="chip-row" id="filter-priority">
+            <button class="chip on" data-priority="All">Any</button>
+            <button class="chip" data-priority="High">High (7–10)</button>
+            <button class="chip" data-priority="Normal">Normal (&lt;7)</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="feed-head">
+        <div>
+          <h1>Today's Real Estate Desk</h1>
+          <p id="resultCount">Loading updates...</p>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button class="btn-run-scraper" id="btnRunScraperFeed" title="Fetch latest real estate news via AI pipeline">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38" />
+            </svg>
+            <span id="runScraperBtnLabel">Run Scraper</span>
+          </button>
+          <button class="filter-toggle" id="filterToggleBtn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M4 6h16M7 12h10M10 18h4" />
+            </svg>
+            Filters <span class="dot"></span>
+          </button>
+        </div>
+      </div>
+      <div id="feedList"></div>
+    </main>
+  </div>
+
+  <!-- ============ DETAIL VIEW ============ -->
+  <div id="view-detail" class="detail-wrap hidden"></div>
+
+  <!-- ============ SAVED VIEW ============ -->
+  <div id="view-saved" class="section-page hidden">
+    <div class="feed-head">
+      <div>
+        <h1>Saved News</h1>
+        <p id="savedCount">0 bookmarked updates</p>
+      </div>
+    </div>
+    <div id="savedList"></div>
+  </div>
+
+  <!-- ============ ADMIN PANEL VIEW ============ -->
+  <div id="view-admin" class="section-page hidden">
+    <div class="feed-head">
+      <div>
+        <h1>Admin Control Dashboard</h1>
+        <p>Manage your subscriber database and download compiled reports.</p>
+      </div>
+    </div>
+
+    <div class="admin-grid">
+      <!-- AI Engine Settings Card (Collapsible) -->
+      <details class="admin-card full-width-card admin-collapsible-details hidden" id="settingsCard">
+        <summary class="admin-collapsible-summary">
+          <h2>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+            </svg>
+            AI Engine Settings
+          </h2>
+          <span class="accordion-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </span>
+        </summary>
+        <div class="collapsible-content-wrapper" style="margin-top: 14px;">
+          <p class="admin-card-desc">The AI engine runs automatically every morning — no daily action needed. If the
+            scraper stops working, your technical team will provide a new key to enter below. Get a key at <a
+              href="https://console.groq.com" target="_blank" rel="noopener"
+              style="color:var(--forest);font-weight:600;">console.groq.com</a>. Saved locally on this device.</p>
+          <div class="api-config-row">
+            <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+              <label class="section-label" style="display:block;margin-bottom:0;">Groq API Key</label>
+              <input type="password" id="inputGroqKey" class="text-input" placeholder="gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                autocomplete="off" style="width:100%;">
+            </div>
+            <button class="btn primary" id="btnSaveApiKeys" style="height:38px;">Save Key</button>
+          </div>
+          <p id="keyStatusMsg" style="font-size:12px;margin-top:8px;color:var(--success);font-weight:600;"></p>
+        </div>
+      </details>
+
+      <!-- Scraper & AI Engine Status -->
+      <div class="admin-card full-width-card">
+        <h2>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M12 8v4l3 3" />
+          </svg>
+          News Scraping & AI Intelligence Pipeline
+        </h2>
+        <p class="admin-card-desc">Triggers live scraping of 8+ national RSS feeds, removes duplicates, and processes
+          top 50 articles via AI for categorization and summaries. This runs automatically at 8:00 AM daily.</p>
+        <div class="scraper-actions">
+          <button class="btn primary" id="btnRunScraper">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38" />
+            </svg>
+            Run AI Scraper Now
+          </button>
+          <button class="btn ghost" id="btnClearLogs">Clear Console</button>
+        </div>
+
+        <details class="console-accordion-details" id="consoleDetails">
+          <summary class="console-summary-head">
+            <span>Show Live Activity Logs</span>
+            <span class="accordion-icon">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </span>
+          </summary>
+          <div class="console-box" id="scraperConsole" style="margin-top: 10px;">
+            <p class="console-line info">[System] Console initialized. Ready to execute pipeline runs.</p>
+          </div>
+        </details>
+
+        <div class="status-rows">
+          <div class="status-row">
+            <span class="status-label">Primary AI Engine</span>
+            <span class="status-val green" id="key1Status">Active</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Backup AI Engine</span>
+            <span class="status-val green" id="key2Status">Standby Ready</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Auto-Failover Protection</span>
+            <span class="status-val green" id="failoverCount">Fully Operational</span>
+          </div>
+          <div class="status-row">
+            <span class="status-label">Scheduled Daily Run</span>
+            <span class="status-val green">8:00 AM IST · Active</span>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Recipients Management (PRD: Add/Edit/Delete recipients, Upload DB) -->
+      <div class="admin-card">
+        <h2>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          Recipients Database
+        </h2>
+        <p class="admin-card-desc">Manage your email and WhatsApp subscriber lists. Add contacts manually or import via
+          CSV for bulk uploads.</p>
+        <div id="adminContactList"></div>
+
+        <!-- Inline New Group Form (shown when "New Group" clicked) -->
+        <div id="newGroupForm" class="new-group-form hidden">
+          <div class="ngf-inner">
+            <h4>Create New Recipient Group</h4>
+            <div class="ngf-row">
+              <div class="form-group" style="flex:2;">
+                <label>Group Name</label>
+                <input type="text" id="ngfName" class="text-input" placeholder="e.g. Mumbai Investors">
+              </div>
+              <div class="form-group" style="flex:3;">
+                <label>Description <small>(optional)</small></label>
+                <input type="text" id="ngfDesc" class="text-input" placeholder="e.g. HNI investors in Mumbai">
+              </div>
+            </div>
+            <div class="ngf-actions">
+              <button class="btn primary small" id="btnNewGroupSave">Create Group</button>
+              <button class="btn ghost small" id="btnNewGroupCancel">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn primary small" id="btnNewGroup">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            New Group
+          </button>
+          <button class="btn ghost small" id="btnDownloadTemplate">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            Download CSV Template
+          </button>
+        </div>
+      </div>
+
+      <!-- Report Export Center -->
+      <div class="admin-card">
+        <h2>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
+          </svg>
+          Report Export Center
+        </h2>
+        <p class="admin-card-desc">Generate professional branded PDF reports from the live news archive.</p>
+
+        <div class="filter-group">
+          <label>Select Report Scope</label>
+          <div class="chip-row" id="reportScopeChips" style="margin-bottom: 15px;">
+            <button class="chip on" data-scope="daily">Daily</button>
+            <button class="chip" data-scope="weekly">Weekly</button>
+            <button class="chip" data-scope="monthly">Monthly</button>
+            <button class="chip" data-scope="city">City-Wise</button>
+            <button class="chip" data-scope="builder">Builder-Wise</button>
+          </div>
+        </div>
+
+        <div class="filter-group hidden" id="reportFilterContainer" style="margin-bottom: 15px;">
+          <label id="reportFilterLabel">Specify Filter Value</label>
+          <input type="text" id="reportFilterInput" placeholder="e.g. Mumbai or Lodha Group" class="text-input">
+        </div>
+
+        <button class="btn primary" id="btnDownloadReport" style="width: 100%;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+          </svg>
+          Compile &amp; Download PDF Report
+        </button>
+      </div>
+
+      <!-- Broadcast Campaign Analytics -->
+      <div class="admin-card hidden">
+        <h2>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z" />
+          </svg>
+          Campaign Analytics
+        </h2>
+        <div class="chart-container" id="analyticsChart"></div>
+        <div class="stats-grid">
+          <div class="stat-item s-sent">
+            <label>Total Sent</label>
+            <span id="statSent">0</span>
+          </div>
+          <div class="stat-item s-opens">
+            <label>Opens</label>
+            <span id="statOpens">0</span>
+          </div>
+          <div class="stat-item s-clicks">
+            <label>Clicks</label>
+            <span id="statClicks">0</span>
+          </div>
+        </div>
+        <h4 class="section-label" style="margin-top: 18px;">Campaign Dispatch Log</h4>
+        <div class="campaign-log-list" id="campaignLogList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SELECTION TRAY ============ -->
+  <div class="tray" id="tray">
+    <div class="tray-count"><b id="trayNum">0</b> updates selected for bulletin</div>
+    <div class="tray-spacer"></div>
+    <button class="clear" id="trayClear">Clear</button>
+    <button class="create" id="trayCreate">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 19l9 2-9-18-9 18z" />
+      </svg>
+      Create Daily Bulletin
+    </button>
+  </div>
+
+  <!-- ============ BULLETIN MODAL ============ -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="stamp"><span>RE<br>BULLETIN</span></div>
+        <h2>Create Daily Bulletin</h2>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-steps">
+        <div class="mstep active" data-step="1">1 · Selected News</div>
+        <div class="mstep" data-step="2">2 · Branded Format</div>
+        <div class="mstep" data-step="3">3 · Broadcast Dispatch</div>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <!-- JavaScript Application Entry -->
+  <script src="app.js"></script>
+</body>
+
+</html>
