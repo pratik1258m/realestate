@@ -633,16 +633,16 @@ ${JSON.stringify(batch.map(b => ({ localId: b.localId, title: b.title, content: 
           if (item.relevant) {
             const original = batch.find(b => b.localId === item.originalId);
             if (original) {
-              // Create a fallback stock image based on category
+              // Category-specific default images (served locally)
               const stockImages = {
-                'Project Launch': 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80',
-                'Land Acquisition': 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80',
-                'Redevelopment': 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&q=80',
-                'RERA': 'https://images.unsplash.com/photo-1582407947304-fd86f028f716?w=800&q=80',
-                'Funding': 'https://images.unsplash.com/photo-1565182999561-18d7dc61c393?w=800&q=80',
-                'Government Policy': 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&q=80',
-                'Infrastructure': 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80',
-                'Litigation': 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800&q=80'
+                'Project Launch': '/images/categories/project-launch.png',
+                'Land Acquisition': '/images/categories/land-acquisition.png',
+                'Redevelopment': '/images/categories/redevelopment.png',
+                'RERA': '/images/categories/rera.png',
+                'Funding': '/images/categories/funding.png',
+                'Government Policy': '/images/categories/government-policy.png',
+                'Infrastructure': '/images/categories/infrastructure.png',
+                'Litigation': '/images/categories/litigation.png'
               };
 
               processedArticles.push({
@@ -659,7 +659,7 @@ ${JSON.stringify(batch.map(b => ({ localId: b.localId, title: b.title, content: 
                 link: original.link,
                 originalTitle: original.title,
                 originalLink: normalizeUrl(original.link),
-                img: original.imageUrl || stockImages[item.category] || 'https://images.unsplash.com/photo-1582407947304-fd86f028f716?w=800&q=80',
+                img: original.imageUrl || stockImages[item.category] || '/images/categories/project-launch.png',
                 priorityScore: item.priorityScore || 5,
                 rera: original.title.includes('RERA') ? 'Details in Body' : '—',
                 rerastatus: item.category === 'RERA' ? 'Regulatory Review' : 'Active',

@@ -8,6 +8,18 @@ const DEFAULT_RECIPIENTS = [
   { id: 'g4', name: 'Internal Team', count: 0, desc: 'Office & field staff', contacts: [] }
 ];
 
+// Category-specific default images (served locally)
+const CATEGORY_IMAGES = {
+  'Project Launch': '/images/categories/project-launch.png',
+  'Land Acquisition': '/images/categories/land-acquisition.png',
+  'Redevelopment': '/images/categories/redevelopment.png',
+  'RERA': '/images/categories/rera.png',
+  'Funding': '/images/categories/funding.png',
+  'Government Policy': '/images/categories/government-policy.png',
+  'Infrastructure': '/images/categories/infrastructure.png',
+  'Litigation': '/images/categories/litigation.png'
+};
+
 // ===== 2. STATE VARIABLES =====
 let NEWS = [];
 let saved = new Set();
@@ -92,23 +104,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     return !isNaN(d.getTime()) && d >= startupCutoff;
   });
 
-  // 2. Jaccard Deduplication
+  // 2. Link-based deduplication (fast pass — catches exact same source article)
+  const seenLinks = new Set();
+  NEWS = NEWS.filter(n => {
+    const normLink = n.originalLink || normalizeUrl(n.link);
+    if (normLink && normLink !== '' && seenLinks.has(normLink)) return false;
+    if (normLink) seenLinks.add(normLink);
+    return true;
+  });
+
+  // 3. Jaccard Deduplication on BOTH originalTitle and headline
   const uniqueNews = [];
-  const uniqueTokenSets = [];
+  const uniqueOrigTokenSets = [];  // tokens from originalTitle
+  const uniqueHeadTokenSets = [];  // tokens from headline
   for (const item of NEWS) {
-    const title = item.originalTitle || item.headline || item.title || '';
-    const tokens = clientGetTokens(title);
+    const origTitle = item.originalTitle || item.title || '';
+    const headline = item.headline || '';
+    const origTokens = clientGetTokens(origTitle);
+    const headTokens = clientGetTokens(headline);
     let isDup = false;
     for (let i = 0; i < uniqueNews.length; i++) {
-      const sim = clientJaccardSimilarity(tokens, uniqueTokenSets[i]);
-      if (sim > 0.45) {
+      // Check similarity against both originalTitle and headline of existing items
+      const simOrig = clientJaccardSimilarity(origTokens, uniqueOrigTokenSets[i]);
+      const simHead = clientJaccardSimilarity(headTokens, uniqueHeadTokenSets[i]);
+      const simCross1 = clientJaccardSimilarity(origTokens, uniqueHeadTokenSets[i]);
+      const simCross2 = clientJaccardSimilarity(headTokens, uniqueOrigTokenSets[i]);
+      const maxSim = Math.max(simOrig, simHead, simCross1, simCross2);
+      if (maxSim > 0.35) {
         isDup = true;
         break;
       }
     }
     if (!isDup) {
       uniqueNews.push(item);
-      uniqueTokenSets.push(tokens);
+      uniqueOrigTokenSets.push(origTokens);
+      uniqueHeadTokenSets.push(headTokens);
     }
   }
   NEWS = uniqueNews;
@@ -205,19 +235,29 @@ function priorityClass(score) {
 
 function hasValidThumbnail(img) {
   if (!img) return false;
+  // Filter out old Unsplash stock placeholders
   if (img.includes('images.unsplash.com/photo-') && (
-    img.includes('1545324418') || 
-    img.includes('1502672260') || 
-    img.includes('1486406146') || 
-    img.includes('1582407947') || 
-    img.includes('1565182999') || 
-    img.includes('1493809842') || 
-    img.includes('1600585154') || 
-    img.includes('1589829545')
+    img.includes('1545324418') ||
+    img.includes('1502672260') ||
+    img.includes('1486406146') ||
+    img.includes('1582407947') ||
+    img.includes('1565182999') ||
+    img.includes('1493809842') ||
+    img.includes('1600585154') ||
+    img.includes('1589829545') ||
+    img.includes('1486325212')
   )) {
     return false;
   }
+  // Filter out local category default images (these are fallbacks, not real thumbnails)
+  if (img.startsWith('/images/categories/')) {
+    return false;
+  }
   return true;
+}
+
+function getCategoryImage(category) {
+  return CATEGORY_IMAGES[category] || '/images/categories/project-launch.png';
 }
 
 // ===== 11. NEWS CARD TEMPLATE =====
@@ -225,7 +265,7 @@ function categoryCoverHTML(category, city) {
   const cat = category ? category.trim() : '';
   let initial = 'RE';
   let className = 'cover-general';
-  
+
   if (cat === 'Project Launch') {
     initial = 'PL';
     className = 'cover-launch';
@@ -271,7 +311,7 @@ function cardTemplate(n) {
   <div class="card ${isChecked ? 'selected' : ''}" data-id="${n.id}">
     <div class="card-top">
       <div class="card-img">
-        ${hasValidThumbnail(n.img) ? `<img src="${n.img}" alt="${n.headline}" loading="lazy">` : categoryCoverHTML(n.category, n.city)}
+        ${hasValidThumbnail(n.img) ? `<img src="${n.img}" alt="${n.headline}" loading="lazy">` : `<img src="${getCategoryImage(n.category)}" alt="${n.category}" loading="lazy">`}
         <div class="card-checkbox ${isChecked ? 'checked' : ''}" data-action="select" data-id="${n.id}" title="Select for bulletin">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
@@ -600,7 +640,8 @@ function openDetail(id) {
   const n = NEWS.find(x => x.id === id);
   if (!n) return;
   const related = NEWS.filter(x => x.id !== id && (x.city === n.city || x.category === n.category)).slice(0, 3);
-  const imgSrc = n.img || 'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=800&q=80';
+  const imgSrc = hasValidThumbnail(n.img) ? n.img : getCategoryImage(n.category);
+  const fallbackImg = getCategoryImage(n.category);
 
   document.getElementById('view-detail').innerHTML = `
     <a class="back-link" href="#" data-action="back">
@@ -608,7 +649,7 @@ function openDetail(id) {
       Back to feed
     </a>
     <div class="detail-hero">
-      <img src="${imgSrc}" alt="${n.headline}" onerror="this.src='https://images.unsplash.com/photo-1486325212027-8081e485255e?w=800&q=80'">
+      <img src="${imgSrc}" alt="${n.headline}" onerror="this.src='${fallbackImg}'">
       ${n.rerastatus && n.rerastatus.includes('Registered') ? `<div class="stamp"><span>RERA<br>VERIFIED</span></div>` : ''}
     </div>
     <div class="detail">
@@ -673,7 +714,7 @@ function openDetail(id) {
       <div class="related-grid">
         ${related.map(r => `
           <a class="related-card" href="#" data-action="open" data-id="${r.id}">
-            <img src="${r.img || 'https://images.unsplash.com/photo-1486325212027-8081e485255e?w=400&q=70'}" loading="lazy">
+            <img src="${hasValidThumbnail(r.img) ? r.img : getCategoryImage(r.category)}" loading="lazy">
             <div><p>${r.headline}</p><small>${r.city} · ${r.date}</small></div>
           </a>`).join('') || '<p style="color:var(--ink-soft);font-size:13px;">No related updates found.</p>'}
       </div>
@@ -935,7 +976,7 @@ function setupEvents() {
     if (document.getElementById('ngfName')) document.getElementById('ngfName').value = '';
     if (document.getElementById('ngfDesc')) document.getElementById('ngfDesc').value = '';
     if (isBackendMode) {
-      fetch('/api/recipients', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ action: 'create_group', name, desc }) }).catch(() => {});
+      fetch('/api/recipients', { method: 'POST', headers: getHeaders(), body: JSON.stringify({ action: 'create_group', name, desc }) }).catch(() => { });
     }
   });
 
@@ -1165,7 +1206,7 @@ async function triggerManualScrape({ inline = false } = {}) {
 
         for (let attempt = 0; attempt < proxies.length; attempt++) {
           const proxyIndex = (startIndex + attempt) % proxies.length;
-          
+
           // Increment rotation index on the first attempt of this call
           if (attempt === 0) {
             proxyRotationIndex = (proxyRotationIndex + 1) % proxies.length;
@@ -1177,7 +1218,7 @@ async function triggerManualScrape({ inline = false } = {}) {
             const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout per request
             const response = await fetch(proxyUrl, { signal: controller.signal });
             clearTimeout(timeoutId);
-            
+
             if (response.ok) {
               return await response.text();
             }
@@ -1225,17 +1266,24 @@ async function triggerManualScrape({ inline = false } = {}) {
       const uniqueArticles = [];
       const titleTokenSets = [];
 
-      // Pre-tokenize existing headlines for speed
-      const existingTokenSets = NEWS.map(n => clientGetTokens(n.headline || n.title || ''));
+      // Pre-build existing normalized links set for fast lookup
+      const existingNormLinks = new Set(NEWS.map(n => n.originalLink || normalizeUrl(n.link)).filter(Boolean));
+      // Pre-tokenize existing headlines AND originalTitles for thorough matching
+      const existingHeadTokenSets = NEWS.map(n => clientGetTokens(n.headline || n.title || ''));
+      const existingOrigTokenSets = NEWS.map(n => clientGetTokens(n.originalTitle || n.title || ''));
 
       for (const art of allArticles) {
+        const artNormLink = normalizeUrl(art.link);
+        // Fast link-based dedup first
+        if (artNormLink && existingNormLinks.has(artNormLink)) continue;
+
         const tokens = clientGetTokens(art.title);
         let isDuplicate = false;
 
         // 1. Check against new unique articles in this run
         for (let i = 0; i < uniqueArticles.length; i++) {
           const sim = clientJaccardSimilarity(tokens, titleTokenSets[i]);
-          if (sim > 0.45) {
+          if (sim > 0.35) {
             isDuplicate = true;
             if ((art.content || '').length > (uniqueArticles[i].content || '').length) {
               uniqueArticles[i] = art;
@@ -1247,9 +1295,11 @@ async function triggerManualScrape({ inline = false } = {}) {
         if (isDuplicate) continue;
 
         // 2. Check against already processed articles in the database
+        //    Compare raw title against both headline and originalTitle of existing articles
         for (let i = 0; i < NEWS.length; i++) {
-          const sim = clientJaccardSimilarity(tokens, existingTokenSets[i]);
-          if (sim > 0.45) {
+          const simHead = clientJaccardSimilarity(tokens, existingHeadTokenSets[i]);
+          const simOrig = clientJaccardSimilarity(tokens, existingOrigTokenSets[i]);
+          if (Math.max(simHead, simOrig) > 0.35) {
             isDuplicate = true;
             break;
           }
@@ -1333,23 +1383,14 @@ ${JSON.stringify(batch.map(b => ({ localId: b.localId, title: b.title, content: 
           const responseData = await callGroqClientSide(messages, apiKey);
           const contentText = responseData.choices[0].message.content;
           const batchResults = JSON.parse(contentText).results || [];
-          
+
           const batchProcessed = [];
 
           for (const item of batchResults) {
             if (item.relevant) {
               const original = batch.find(b => b.localId === item.originalId);
               if (original) {
-                const stockImages = {
-                  'Project Launch': 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80',
-                  'Land Acquisition': 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800&q=80',
-                  'Redevelopment': 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&q=80',
-                  'RERA': 'https://images.unsplash.com/photo-1582407947304-fd86f028f716?w=800&q=80',
-                  'Funding': 'https://images.unsplash.com/photo-1565182999561-18d7dc61c393?w=800&q=80',
-                  'Government Policy': 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?w=800&q=80',
-                  'Infrastructure': 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80',
-                  'Litigation': 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800&q=80'
-                };
+                const stockImages = CATEGORY_IMAGES;
 
                 const newArt = {
                   id: Date.now() + Math.random(),
@@ -1365,7 +1406,7 @@ ${JSON.stringify(batch.map(b => ({ localId: b.localId, title: b.title, content: 
                   link: original.link,
                   originalTitle: original.title,
                   originalLink: normalizeUrl(original.link),
-                  img: original.imageUrl || stockImages[item.category] || 'https://images.unsplash.com/photo-1582407947304-fd86f028f716?w=800&q=80',
+                  img: original.imageUrl || stockImages[item.category] || '/images/categories/project-launch.png',
                   priorityScore: item.priorityScore || 5,
                   rera: original.title.includes('RERA') ? 'Details in Body' : '—',
                   rerastatus: item.category === 'RERA' ? 'Regulatory Review' : 'Active',
@@ -1388,8 +1429,19 @@ ${JSON.stringify(batch.map(b => ({ localId: b.localId, title: b.title, content: 
           }
 
           if (batchProcessed.length > 0) {
-            const existingLinks = new Set(NEWS.map(n => n.link));
-            const freshOnes = batchProcessed.filter(n => !existingLinks.has(n.link));
+            const existingNormLinks = new Set(NEWS.map(n => n.originalLink || normalizeUrl(n.link)).filter(Boolean));
+            const freshOnes = batchProcessed.filter(n => {
+              const normLink = n.originalLink || normalizeUrl(n.link);
+              if (normLink && existingNormLinks.has(normLink)) return false;
+              // Also do a quick Jaccard check on headline vs existing headlines
+              const tokens = clientGetTokens(n.headline || '');
+              for (const existing of NEWS) {
+                const existHead = clientGetTokens(existing.headline || '');
+                const existOrig = clientGetTokens(existing.originalTitle || '');
+                if (Math.max(clientJaccardSimilarity(tokens, existHead), clientJaccardSimilarity(tokens, existOrig)) > 0.35) return false;
+              }
+              return true;
+            });
             if (freshOnes.length > 0) {
               NEWS = [...freshOnes, ...NEWS].slice(0, 100);
               saveToLocalStorage('re_news', NEWS);
@@ -1401,7 +1453,7 @@ ${JSON.stringify(batch.map(b => ({ localId: b.localId, title: b.title, content: 
         } catch (batchErr) {
           log(`AI processing batch failed: ${batchErr.message}`, 'error');
         }
-        
+
         // Add a 2400ms cooling delay between batches to respect Groq rate limits (6000 TPM)
         await new Promise(resolve => setTimeout(resolve, 2400));
       }
@@ -1442,21 +1494,35 @@ ${JSON.stringify(batch.map(b => ({ localId: b.localId, title: b.title, content: 
         }
 
         if (result.articles && result.articles.length > 0) {
-          // Perform Jaccard similarity check against existing database articles
+          // Build existing normalized links set for fast lookup
+          const existingNormLinks = new Set(NEWS.map(n => n.originalLink || normalizeUrl(n.link)).filter(Boolean));
+
+          // Perform link-based + Jaccard similarity check against existing database articles
           const filteredArticles = result.articles.filter(art => {
-            const tokens = clientGetTokens(art.headline || art.title || '');
+            // 1. Fast link-based check
+            const artNormLink = art.originalLink || normalizeUrl(art.link);
+            if (artNormLink && existingNormLinks.has(artNormLink)) return false;
+
+            // 2. Jaccard check on both headline and originalTitle
+            const headTokens = clientGetTokens(art.headline || art.title || '');
+            const origTokens = clientGetTokens(art.originalTitle || '');
             for (const existing of NEWS) {
-              const existingTokens = clientGetTokens(existing.headline || existing.title || '');
-              const sim = clientJaccardSimilarity(tokens, existingTokens);
-              if (sim > 0.45) return false;
+              const existHead = clientGetTokens(existing.headline || existing.title || '');
+              const existOrig = clientGetTokens(existing.originalTitle || '');
+              const maxSim = Math.max(
+                clientJaccardSimilarity(headTokens, existHead),
+                clientJaccardSimilarity(headTokens, existOrig),
+                origTokens.size > 0 ? clientJaccardSimilarity(origTokens, existHead) : 0,
+                origTokens.size > 0 ? clientJaccardSimilarity(origTokens, existOrig) : 0
+              );
+              if (maxSim > 0.35) return false;
             }
             return true;
           });
 
           if (filteredArticles.length > 0) {
-            const existingLinks = new Set(NEWS.map(n => n.link));
-            const merged = [...filteredArticles.filter(n => !existingLinks.has(n.link)), ...NEWS];
-            NEWS = merged.slice(0, 100);
+            // Already filtered by normalizedLink above, no need for another link check
+            NEWS = [...filteredArticles, ...NEWS].slice(0, 100);
             saveToLocalStorage('re_news', NEWS);
             renderFeed();
             log(`Feed updated with ${filteredArticles.length} new articles.`, 'success');
@@ -1817,7 +1883,7 @@ function parseXmlFeed(xmlText, feedName) {
   items.forEach(item => {
     const title = item.querySelector('title')?.textContent || '';
     const link = item.querySelector('link')?.textContent || '';
-    
+
     // Case-insensitive date extraction to support different XML normalizations
     let pubDateText = '';
     for (let i = 0; i < item.children.length; i++) {
@@ -1828,11 +1894,11 @@ function parseXmlFeed(xmlText, feedName) {
         break;
       }
     }
-    
+
     if (!pubDateText) {
-      pubDateText = item.querySelector('pubDate')?.textContent || 
-                    item.querySelector('pubdate')?.textContent || 
-                    item.querySelector('date')?.textContent || '';
+      pubDateText = item.querySelector('pubDate')?.textContent ||
+        item.querySelector('pubdate')?.textContent ||
+        item.querySelector('date')?.textContent || '';
     }
 
     // Skip articles with no pubDate instead of defaulting to today. Prevents fake freshness claims.
